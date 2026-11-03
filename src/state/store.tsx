@@ -16,6 +16,7 @@ interface Store {
   coupon: string | null; setCoupon: (c: string | null) => void;
   buyNow: CartItem | null; setBuyNow: (i: CartItem | null) => void;
   toasts: Toast[]; toast: (msg: string, kind?: Toast['kind']) => void;
+  cartPopup: { item: CartItem; key: number } | null; showCartPopup: (it: CartItem) => void; closeCartPopup: () => void;
 }
 const Ctx = createContext<Store | null>(null);
 export const useStore = () => { const c = useContext(Ctx); if (!c) throw new Error('StoreProvider missing'); return c; };
@@ -30,6 +31,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [coupon, setCoupon] = useLocal<string | null>('coupon', null);
   const [buyNow, setBuyNow] = useState<CartItem | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [cartPopup, setCartPopup] = useState<{ item: CartItem; key: number } | null>(null);
 
   useEffect(() => {
     let live = true; setLoading(true); setError('');
@@ -57,6 +59,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     wish, addWish: id => setWish(w => (w.includes(id) ? w : [...w, id])),
     toggleWish: id => setWish(w => (w.includes(id) ? w.filter(x => x !== id) : [...w, id])),
     coupon, setCoupon, buyNow, setBuyNow, toasts, toast,
+    cartPopup, showCartPopup: it => setCartPopup({ item: it, key: Date.now() }), closeCartPopup: () => setCartPopup(null),
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

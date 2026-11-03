@@ -52,6 +52,8 @@ export default function Home() {
   const maxOff = products.reduce((m, p) => Math.max(m, p.off), 0);       // real best discount in the catalogue
   const headline = maxOff >= 10 ? `Up to ${maxOff}% Off` : 'Festive Savings';
   const bands = [50, 60, 70, 80].map(n => ({ n, count: products.filter(p => p.off >= n).length })).filter(b => b.count > 0);
+  const forCat = (cat: string) => products.filter(p => p.cats.includes(cat)).sort((a, b) => b.reviews * b.rating - a.reviews * a.rating).slice(0, 12);
+  const mens = forCat('men'), womens = forCat('women');
   const under = (m: number) => products.filter(p => p.price <= m).length;
   const copy = async (code: string) => { try { await navigator.clipboard.writeText(code); toast(`${code} copied – apply it in your cart`, 'ok'); } catch { toast(`Use code ${code} in your cart`); } };
   const ticker = [`🪔 Diwali Sale: ${headline.toLowerCase()}`, ...Object.entries(COUPONS).map(([c, v]) => `🎁 ${v.label} – code ${c}`), '📲 Pay easily by UPI / QR', '🚚 Flat ₹20 delivery · delivered within 36 hours'];
@@ -82,6 +84,10 @@ export default function Home() {
       </section>
 
       <HScroll title="⭐ Bestsellers" list={by('bestseller')} link="/c/all?tag=bestseller" />
+
+      {mens.length ? <HScroll title="👔 Men’s Wear" list={mens} link="/c/men" /> : <section className="section"><div className="sec-head"><h2>👔 Men’s Wear</h2></div><p className="muted">The men’s collection is coming soon.</p></section>}
+
+      {womens.length ? <HScroll title="👗 Women’s Wear" list={womens} link="/c/women" /> : <section className="section"><div className="sec-head"><h2>👗 Women’s Wear</h2></div><p className="muted">The women’s collection is coming soon.</p></section>}
 
       {bands.length > 0 && <section className="section"><div className="sec-head"><h2>💥 Mega Savings</h2><Link className="btn sm primary" to="/c/all?sort=disc">VIEW ALL</Link></div>
         <div className="bands">{bands.map(b => <Link key={b.n} to={`/c/all?off=${b.n}`} style={{ background: BAND_STYLES[b.n] }}><b>{b.n}%</b><span>OFF &amp; ABOVE</span><small>{b.count} styles</small></Link>)}</div></section>}

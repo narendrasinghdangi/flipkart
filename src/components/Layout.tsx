@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { CATS, productImg } from '../lib/art';
+import { CartPopup } from './CartPopup';
 import { inr } from '../lib/format';
 import { useAuth } from '../state/auth';
 import { useStore } from '../state/store';
@@ -99,6 +100,7 @@ export function Layout() {
       </main>
       <Footer />
       <BottomNav />
+      <CartPopup />
       <div id="toasts" aria-live="polite">{toasts.map(t => <div key={t.id} className={`toast ${t.kind}`}>{t.msg}</div>)}</div>
     </>
   );
