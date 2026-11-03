@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { HScroll, ProductCard } from '../components/Common';
-import { CATS, productImg } from '../lib/art';
+import { productImg } from '../lib/art';
 import type { Product } from '../types';
 import { inr } from '../lib/format';
 import { COUPONS } from '../lib/pricing';
@@ -74,14 +74,14 @@ export default function Home() {
 
       <div className="ticker" aria-label="Current offers"><div className="ticker-track">{[0, 1].map(r => <span key={r} aria-hidden={r === 1}>{ticker.map(x => <b key={x + r}>{x}</b>)}</span>)}</div></div>
 
-      <section className="cat-circles">{CATS.map(c => <Link key={c.id} to={`/c/${c.id}`}><span className="circle" style={{ ['--c' as string]: c.color }}>{c.icon}</span><span>{c.name}</span></Link>)}</section>
-
       <section className="strip">{[['🚚', 'Fast delivery', '₹20 flat · within 36 hours'], ['↩️', '15-day returns', 'easy & hassle free'], ['🔒', 'Secure payments', 'UPI · QR · Cards'], ['✨', '100% genuine', 'quality checked']].map(x => <div key={x[1]}><span>{x[0]}</span><div><b>{x[1]}</b><small>{x[2]}</small></div></div>)}</section>
 
       <section className="section deal">
         <div className="sec-head"><h2>⚡ Deals of the Day <Countdown /></h2><Link className="btn sm primary" to="/c/all?sort=disc">VIEW ALL</Link></div>
         <div className="hscroll">{deal.map(p => <ProductCard key={p.id} p={p} compact />)}</div>
       </section>
+
+      <HScroll title="⭐ Bestsellers" list={by('bestseller')} link="/c/all?tag=bestseller" />
 
       {bands.length > 0 && <section className="section"><div className="sec-head"><h2>💥 Mega Savings</h2><Link className="btn sm primary" to="/c/all?sort=disc">VIEW ALL</Link></div>
         <div className="bands">{bands.map(b => <Link key={b.n} to={`/c/all?off=${b.n}`} style={{ background: BAND_STYLES[b.n] }}><b>{b.n}%</b><span>OFF &amp; ABOVE</span><small>{b.count} styles</small></Link>)}</div></section>}
@@ -105,7 +105,6 @@ export default function Home() {
       <HScroll title="🆕 New Arrivals" list={by('new')} link="/c/all?sort=new" />
       <section className="section"><div className="sec-head"><h2>Top Brands</h2></div>
         <div className="brands">{[...new Set(products.map(p => p.brand))].sort().slice(0, 12).map(b => <Link key={b} to={`/search?brand=${encodeURIComponent(b)}`}>{b}</Link>)}</div></section>
-      <HScroll title="⭐ Bestsellers" list={by('bestseller')} link="/c/all?tag=bestseller" />
     </>
   );
 }
