@@ -61,7 +61,7 @@ function Footer() {
       <div className="ftr-in">
         <div><h4>Shop</h4><div className="links">{CATS.map(c => <Link key={c.id} to={`/c/${c.id}`}>{c.name}</Link>)}</div></div>
         <div><h4>Help</h4><div className="links"><Link to="/orders">My Orders</Link><Link to="/track">Track Order</Link><Link to="/cart">Cart</Link><Link to="/wishlist">Wishlist</Link></div></div>
-        <div><h4>Policies</h4><div className="links"><span>15-day returns</span><span>Free delivery above ₹499</span><span>Secure payments</span></div></div>
+        <div><h4>Policies</h4><div className="links"><span>15-day returns</span><span>₹20 delivery · within 36 hours</span><span>Secure payments</span></div></div>
         <div><h4>About</h4><p className="muted">StyleWagon is a demo fashion store. Payments are simulated and no real transactions occur.</p></div>
       </div>
       <div className="copy">© 2026 StyleWagon · Demo storefront</div>

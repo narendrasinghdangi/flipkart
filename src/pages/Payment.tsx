@@ -4,15 +4,16 @@ import { PriceBox } from '../components/Common';
 import { ApiError, api } from '../lib/api';
 import { inr } from '../lib/format';
 import { rememberGuest } from '../lib/guest';
+import { clearCheckout, loadHandoff, type Handoff } from '../lib/checkoutState';
 import { totals } from '../lib/pricing';
 import { useStore } from '../state/store';
-import type { Address, Order } from '../types';
+import type { Order } from '../types';
 
-/** Where the checkout hands over: address only (items and coupon live in the store). Lost on refresh -> back to checkout. */
-interface Handoff { addressId?: string; address?: Omit<Address, 'id'> | null; email?: string }
+// The checkout hands over the address only (items and coupon live in the store); it is also remembered for the tab, so a refresh stays here.
 
 export default function Payment() {
-  const { state } = useLocation() as { state: Handoff | null };
+  const loc = useLocation();
+  const state: Handoff | null = (loc.state as Handoff | null) ?? loadHandoff();
   const { cart, buyNow, setBuyNow, byId, coupon, setCoupon, clearCart, toast } = useStore();
   const nav = useNavigate();
   const [busy, setBusy] = useState(false);
@@ -30,11 +31,12 @@ export default function Payment() {
       const o = await api.post<Order>('/orders', {
         items: items.map(i => ({ productId: i.id, size: i.size, color: i.color, qty: i.qty })),
         ...(state.addressId ? { addressId: state.addressId } : { address: state.address, ...(state.email ? { email: state.email } : {}) }),
-        coupon: t.couponValid ? coupon : undefined, payment: { method: 'qr' },
+        coupon: t.couponValid ? coupon : undefined, payment: { method: 'qr', ...(state.upi ? { upi: state.upi } : {}) },
       });
       if (o.guest) rememberGuest({ id: o.id, phone: o.address.phone });
       if (buyNow) setBuyNow(null); else clearCart();
       setCoupon(null);
+      clearCheckout();
       nav(`/order/${o.id}?new=1`, { replace: true });   // order confirmation page
     } catch (e) {
       setErr('❌ ' + (e as ApiError).message); toast((e as ApiError).message, 'err');
@@ -46,6 +48,7 @@ export default function Payment() {
       <div className="co-sec pay-page">
         <h1 className="page-h">Scan &amp; Pay</h1>
         <p className="pay-amount">Amount to pay <b>{inr(t.total)}</b></p>
+        {state.upi && <p className="muted small">Paying from UPI ID <b>{state.upi}</b></p>}
         <img className="pay-qr" src="/payment-qr.jpeg" alt="UPI QR code – scan with any UPI app to pay" />
         <ol className="pay-steps">
           <li>Open any UPI app (GPay, PhonePe, Paytm, BHIM) and scan this QR code.</li>

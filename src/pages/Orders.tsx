@@ -5,12 +5,13 @@ import { art, productImg } from '../lib/art';
 import { api } from '../lib/api';
 import { forgetGuest, guestOrders, guestPhone, rememberGuest } from '../lib/guest';
 import { fmtDate, fmtTime, inr } from '../lib/format';
+import { DELIVERY_HOURS } from '../lib/pricing';
 import { useAuth } from '../state/auth';
 import { useStore } from '../state/store';
 import { OrderRow } from '../components/OrderRow';
 import type { Order } from '../types';
 
-const STAGES: [string, number][] = [['Order Placed', 0], ['Packed', 3], ['Shipped', 8], ['Out for Delivery', 13], ['Delivered', 18]];
+const STAGES: [string, number][] = [['Order Placed', 0], ['Packed', 6 * 60], ['Shipped', 18 * 60], ['Out for Delivery', 30 * 60], ['Delivered', DELIVERY_HOURS * 60]]; // minutes after placing, mirrors the server
 export const Status = ({ o }: { o: Order }) => <span className={`status ${o.cancelled ? 'bad' : o.stage === 4 ? 'ok' : ''}`}>{o.status}</span>;
 
 export function Tracker({ o }: { o: Order }) {
@@ -95,7 +96,7 @@ export function OrderDetail() {
       toast(what === 'cancel' ? 'Order cancelled' : 'Status updated');
     } catch (e) { toast((e as Error).message, 'err'); }
   };
-  const eta = o.placedAt + 4 * 864e5;
+  const eta = o.placedAt + DELIVERY_HOURS * 36e5;
   return (
     <>
       {sp.get('new') ? <div className="success"><div className="tick">✓</div><h1>Order placed successfully!</h1><p>Thank you, {o.address.name}. {o.payment.method === 'cod' ? `Please keep ${inr(o.totals.total)} ready at delivery.` : o.payment.status.startsWith('Payment verification') ? `We have noted your QR payment of ${inr(o.totals.total)}. Your order will be processed once the payment is verified.` : `Payment of ${inr(o.totals.total)} received.`}</p>
@@ -106,7 +107,7 @@ export function OrderDetail() {
           <div className="od-head"><div><h2>Order {o.id}</h2><span className="muted small">Placed on {fmtDate(o.placedAt)}</span></div><Status o={o} /></div>
           <Tracker o={o} />
           {!o.cancelled && o.stage < 4 && <>
-            <p className="muted small">Expected delivery by <b>{fmtDate(eta, { weekday: 'short', day: 'numeric', month: 'short' })}</b>. <i>Demo clock: tracking advances every few minutes.</i></p>
+            <p className="muted small">Expected delivery within <b>{DELIVERY_HOURS} hours</b> – by <b>{fmtDate(eta, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</b>.</p>
             <div className="row-btns"><button className="btn" onClick={() => act('advance')}>⏩ Demo: advance status</button>{o.stage < 2 && <button className="btn danger" onClick={() => act('cancel')}>CANCEL ORDER</button>}</div></>}
           {!o.cancelled && o.stage === 4 && <p className="green"><b>Delivered.</b> Returns are open for 15 days.</p>}
         </div>

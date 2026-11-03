@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { PriceBox } from '../components/Common';
 import { inr } from '../lib/format';
+import { loadHandoff } from '../lib/checkoutState';
 import { totals } from '../lib/pricing';
 import { useStore } from '../state/store';
 
@@ -12,7 +13,8 @@ const EMPTY = { card: '', cname: '', exp: '', cvv: '' };
 
 /** Card / net-banking entry page. Nothing typed here is sent, logged or stored: it is validated locally, wiped, and the customer is pointed to QR pay. */
 export default function CardPayment({ kind }: { kind: 'card' | 'netbanking' }) {
-  const { state } = useLocation();
+  const loc = useLocation();
+  const state = loc.state ?? loadHandoff();
   const { cart, buyNow, byId, coupon } = useStore();
   const nav = useNavigate();
   const [f, setF] = useState(EMPTY);

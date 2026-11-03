@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { HScroll, Modal, Empty, Stars } from '../components/Common';
 import { CATS, COLORS, imgCount, productImg, productImgFull, reviewsFor, soldOut } from '../lib/art';
 import { fmtDate, inr } from '../lib/format';
+import { DELIVERY_FEE, DELIVERY_HOURS } from '../lib/pricing';
 import { useStore } from '../state/store';
 
 const catName = (id: string) => CATS.find(c => c.id === id)?.name ?? id;
@@ -48,7 +49,7 @@ export default function ProductPage() {
           <div className="offers-box"><h4>Available offers</h4>
             <p><b>Coupon</b> Use <code>STYLE10</code> – 10% off up to ₹300 on orders above ₹999</p>
             <p><b>Coupon</b> Use <code>FIRST200</code> – ₹200 off above ₹1,499</p>
-            <p><b>Payment</b> UPI, card, net banking · Cash on Delivery available</p></div>
+            <p><b>Payment</b> UPI &amp; QR pay</p></div>
           <div className="opt"><h4>Colour: <span>{color}</span></h4>
             <div className="swatches lg">{p.colors.map(c => <button key={c} className={`sw ${c === color ? 'sel' : ''}`} title={c} aria-label={c} onClick={() => setColor(c)}><i style={{ background: COLORS[c] }} /></button>)}</div></div>
           <div className="opt"><h4>Size {p.sizes.length > 1 && <button className="link" onClick={() => setGuide(true)}>Size guide</button>}</h4>
@@ -61,7 +62,7 @@ export default function ProductPage() {
           <div className="opt delivery"><h4>Delivery</h4>
             <div className="pin"><input inputMode="numeric" maxLength={6} placeholder="Enter pincode" aria-label="Pincode" value={pin} onChange={e => { setPin(e.target.value.replace(/\D/g, '')); setPinOk(null); }} /><button className="link" onClick={checkPin}>CHECK</button></div>
             <div className="small muted">{pinOk === true ? <>✅ Delivery available to <b>{pin}</b> · Cash on Delivery not available</> : pinOk === false ? <span className="red">Enter a valid 6-digit pincode</span> : 'Enter your pincode to check delivery availability'}</div>
-            <div className="muted small">Standard delivery by <b>{fmtDate(Date.now() + 4 * 864e5, { weekday: 'short', day: 'numeric', month: 'short' })}</b> · 15-day easy returns</div></div>
+            <div className="muted small">Delivery in <b>{DELIVERY_HOURS} hours</b> – by <b>{fmtDate(Date.now() + DELIVERY_HOURS * 36e5, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</b> · Delivery charge <b>{inr(DELIVERY_FEE)}</b> · 15-day easy returns</div></div>
           <div className="opt"><h4>Product details</h4><table className="spec"><tbody>
             <tr><td>Fabric</td><td>{p.fabric}</td></tr><tr><td>Type</td><td>{p.sub}</td></tr><tr><td>Category</td><td>{p.cats.map(catName).join(', ')}</td></tr>
             <tr><td>Care</td><td>{noSize || p.type === 'watch' ? 'Wipe with a soft dry cloth' : 'Machine wash cold, do not bleach'}</td></tr><tr><td>Return policy</td><td>15 days, free pickup</td></tr></tbody></table></div>

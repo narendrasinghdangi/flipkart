@@ -6,33 +6,51 @@ import { ApiError, api } from '../lib/api';
 import { inr } from '../lib/format';
 import { COD_AVAILABLE, COD_FEE, totals } from '../lib/pricing';
 import { rememberGuest } from '../lib/guest';
+import { clearCheckout, loadCheckout, saveCheckout } from '../lib/checkoutState';
 import { useAuth } from '../state/auth';
 import { useStore } from '../state/store';
 import type { Address, Order, PayMethod } from '../types';
 
 const STATES = ['Andhra Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Delhi', 'Goa', 'Gujarat', 'Haryana', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Odisha', 'Punjab', 'Rajasthan', 'Tamil Nadu', 'Telangana', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'];
 
+/** Wait for the login state to settle first, so a refresh restores the right step for the right user. */
 export default function Checkout() {
+  const { ready } = useAuth();
+  if (!ready) return <div className="empty"><div className="spinner" /></div>;
+  return <CheckoutInner />;
+}
+
+function CheckoutInner() {
   const { user } = useAuth();
   const { cart, buyNow, setBuyNow, byId, coupon, setCoupon, clearCart, toast } = useStore();
   const nav = useNavigate();
   const items = buyNow ? [buyNow] : cart;
-  const [step, setStep] = useState(1);
+  const [saved] = useState(loadCheckout);   // progress from before a refresh
+  const [step, setStep] = useState(() => ((user ? saved.addressId : saved.address) && saved.step) || 1);
   const [addrs, setAddrs] = useState<Address[]>([]);
-  const [addrId, setAddrId] = useState('');
-  const [guestAddr, setGuestAddr] = useState<Omit<Address, 'id'> | null>(null);
-  const [email, setEmail] = useState('');
+  const [addrId, setAddrId] = useState(user ? saved.addressId ?? '' : '');
+  const [guestAddr, setGuestAddr] = useState<Omit<Address, 'id'> | null>(user ? null : saved.address ?? null);
+  const [email, setEmail] = useState(user ? '' : saved.email ?? '');
   const [adding, setAdding] = useState(false);
   const [addrErr, setAddrErr] = useState('');
-  const [method, setMethod] = useState<PayMethod>('upi');
+  const [method, setMethod] = useState<PayMethod>(saved.method ?? 'upi');
   const [payErr, setPayErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [f, setF] = useState({ upi: '' });
 
   useEffect(() => {
     if (!user) { setAdding(true); return; }
-    api.get<Address[]>('/addresses').then(a => { setAddrs(a); setAddrId(a[0]?.id ?? ''); setAdding(!a.length); }).catch(e => toast(e.message, 'err'));
-  }, [user, toast]);
+    api.get<Address[]>('/addresses').then(a => {
+      setAddrs(a); setAdding(!a.length);
+      const keep = a.some(x => x.id === saved.addressId);   // restored address still exists?
+      setAddrId(keep ? saved.addressId as string : a[0]?.id ?? '');
+      if (!keep) setStep(1);
+    }).catch(e => toast(e.message, 'err'));
+  }, [user, toast, saved.addressId]);
+
+  useEffect(() => {   // remember where we are, so a refresh stays on the same step
+    saveCheckout({ step, method, ...(user ? { addressId: addrId } : { address: guestAddr ?? undefined, email }) });
+  }, [step, method, user, addrId, guestAddr, email]);
 
   if (!items.length || !items.some(i => byId(i.id))) return <Empty title="Nothing to checkout" to="/" cta="Continue shopping" />;
 
@@ -56,21 +74,23 @@ export default function Checkout() {
   };
 
   const pay = async () => {
-    let bad = '';
     if (method === 'cod' && !COD_AVAILABLE) return setPayErr('Cash on Delivery is not available for this product.');
     const handoff = user ? { addressId: addrId } : { address: guestAddr, email: email.trim() };
     if (method === 'qr') { nav('/payment', { state: handoff }); return; }
     if (method === 'card') { nav('/payment/card', { state: handoff }); return; }
     if (method === 'nb') { nav('/payment/netbanking', { state: handoff }); return; }
-    if (method === 'upi' && !/^[\w.-]{2,}@[a-zA-Z]{2,}$/.test(f.upi.trim())) bad = 'Enter a valid UPI ID (e.g. name@bank)';
-    if (bad) return setPayErr(bad);
+    if (method === 'upi') {   // UPI: validate the ID, then pay by scanning the QR on the payment page
+      if (!/^[\w.-]{2,}@[a-zA-Z]{2,}$/.test(f.upi.trim())) return setPayErr('Enter a valid UPI ID (e.g. name@bank)');
+      setPayErr(''); nav('/payment', { state: { ...handoff, upi: f.upi.trim() } }); return;
+    }
     setPayErr(''); setBusy(true);
-    const payment = method === 'upi' ? { method, upi: f.upi.trim() } : { method };
+    const payment = { method };
     try {
       const o = await api.post<Order>('/orders', { items: items.map(i => ({ productId: i.id, size: i.size, color: i.color, qty: i.qty })), ...(user ? { addressId: addrId } : { address: guestAddr, ...(email.trim() ? { email: email.trim() } : {}) }), coupon: t.couponValid ? coupon : undefined, payment });
       if (o.guest) rememberGuest({ id: o.id, phone: o.address.phone });
       if (buyNow) setBuyNow(null); else clearCart();
       setCoupon(null);
+      clearCheckout();
       nav(`/order/${o.id}?new=1`, { replace: true });
     } catch (err) {
       const e = err as ApiError;
@@ -118,7 +138,7 @@ export default function Checkout() {
                   <label className="pay-h"><input type="radio" name="pm" checked={method === k} onChange={() => { setMethod(k); setPayErr(''); }} /><span><b>{n}</b><small>{d}</small></span></label>
                   {method === k && (
                     <div className="pay-f">
-                      {k === 'upi' && <label>UPI ID<input value={f.upi} onChange={e => setF({ ...f, upi: e.target.value })} placeholder="name@bank" autoComplete="off" /></label>}
+                      {k === 'upi' && <><label>UPI ID<input value={f.upi} onChange={e => setF({ ...f, upi: e.target.value })} placeholder="name@bank" autoComplete="off" /></label><p className="muted small">Enter your UPI ID and click <b>PAY</b> – a QR code opens on the next page to complete the payment.</p></>}
                       {k === 'card' && <p className="muted">Click <b>PAY</b> to enter your card details on the next page.</p>}
                       {k === 'nb' && <p className="muted">Click <b>PAY</b> to choose your bank on the next page.</p>}
                       {k === 'qr' && <p className="muted">Click <b>PAY</b> to open the payment page with a QR code. Scan it with any UPI app (GPay, PhonePe, Paytm, BHIM) and pay {inr(t.total)}.</p>}
